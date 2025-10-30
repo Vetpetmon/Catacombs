@@ -390,11 +390,10 @@ void save_scoreboard(const char* map_name, int score) {
 
 // Gets a random number within the given range:
 int random_number_range(int min, int max) {
-    srand(time(0)); // seed with mobo time
-    return ((rand() % (max - min + 1)) + min);
+    srand((unsigned int)time(NULL)); // Seed the random number generator
+    return (rand() % (max - min + 1)) + min;
 }
 // returns either 0 (false) or 1 (true)
 int random_bool() {
-    srand(time(0)); // seed with mobo time
-    return rand() % 2;
+    return random_number_range(0,1);
 }
