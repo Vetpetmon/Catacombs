@@ -5,8 +5,16 @@ Yes. It's in C. This is my OWN mistake and I will live up to it.
 
 # Build Instructions
 ### Linux:
+
+Linux compilation requires GCC. You will need to refer to your distro's package managers to install it for your specific system.
+
 ```
 gcc -o catacombs catacombs.c -lm
+```
+OR, via shell script:
+```
+chmod +x ./compile.sh
+./compile.sh
 ```
 Will output `catacombs` once compiled, run with `./catacombs`
 
