@@ -42,7 +42,7 @@
         To open a chest and get an item, move into a treasure chest tile.
 
 
-    There's three game mechanics in mind:
+    There's three entities in mind, with their own mechanics:
     - Vision:   The deaf entity cannot see past corners or sufficient-enough hiding spots.
                 HOWEVER, unlike the disturbance entity, standing completely still will not
                 work, as it can see that you're clearly there.
@@ -66,7 +66,7 @@
                 If it hears the player within 10 tiles, the player will be notified by
                 "Metal shoes tap against the ground..."
                 It moves 1 tile every 4 turns when out of aggro.
-                It moves 1 tile every turn when in aggro.
+                It moves 2 tiles every turn when in aggro.
 
     - Movement: The blind & deaf entity cannot see or hear, but it will sense player actions.
                 It will sense anything move through walls within a 20-tile radius.
@@ -81,6 +81,8 @@
 
     There is no winning condition, Catacombs is a survival game. The score is the number of
     turns survived. A leaderboard is updated upon the losing condition being met.
+
+    "Good luck, and godspeed" - My discrete math professor, 2025
 
 */
 
@@ -131,7 +133,8 @@ int load_map_from_file(const char* filename);
 void save_scoreboard(const char* map_name, int score);
 void create_default_map();
 // Utility functions
-int random_number_Range(int min, int max);
+int random_number_range(int min, int max);
+int random_bool();
 
 /*
     Map file reading and detection
@@ -230,17 +233,31 @@ void create_default_map() {
         perror("Error creating default map file");
         return;
     }
+    int map_size_def = 50, treasures_placed = 0;
 
-    // Write default map dimensions
-    fprintf(file, "10 10\n");
+    // Write default map dimensions in header
+    fprintf(file, "%d %d\n", map_size_def, map_size_def);
 
     // Write default map layout
-    for (int y = 0; y < 10; y++) {
-        for (int x = 0; x < 10; x++) {
-            if (x == 0 || x == 9 || y == 0 || y == 9) {
+    // TODO: write more specific rules before printing to file to avoid holes, excessive dead-ends and unreachable floors.
+    for (int y = 0; y < map_size_def; y++) {
+        for (int x = 0; x < map_size_def; x++) {
+            if (x == 0 || x == map_size_def-1 || y == 0 || y == map_size_def-1) { // Prints border of map with walls.
                 fprintf(file, "1 ");
-            } else {
-                fprintf(file, "0 ");
+            } else { // Process anything within the borders
+                if (random_bool() == 1) { // 50/50 chance to make a wall
+                    fprintf(file, "1 ");
+                } else {
+                    if (random_number_range(0,7)==1) { // 1 in 8 chance of making a floor be a hiding spot instead.
+                        fprintf(file, "2 ");
+                    } else if (random_number_range(0,10)==1 && treasures_placed < 3) { // up to 3 treasures exist in a map
+                        fprintf(file, "3 ");
+                        treasures_placed++;
+                    } else {
+                        fprintf(file, "0 ");
+                    }
+                    fprintf(file, "0 ");
+                }
             }
         }
         fprintf(file, "\n");
@@ -248,6 +265,7 @@ void create_default_map() {
 
     fclose(file);
 }
+
 
 
 // Main game loop, takes care of initialization, updating, rendering, and cleanup
@@ -289,13 +307,21 @@ int main(int argc, char* argv[]) {
     return 0;
 }
 
+
+
+
+
 void initialize_game() {
     // Initialize player position, health, score, and other game state variables
     player_x = 10;
     player_y = 10;
     player_score = 0;
 
-    // Additional initialization code goes here
+    // TODO: Player placements
+    // Why player-first? So that we dont place an entity within half the board distance
+
+    // TODO: Entity placements
+
 }
 
 int update_game() {
@@ -306,6 +332,10 @@ int update_game() {
     player_score++;
     return 0;
 }
+
+
+
+
 
 void render_game() {
     // Render the current game state to the console or graphical interface
@@ -359,7 +389,12 @@ void save_scoreboard(const char* map_name, int score) {
 // UTILITY FUNCTIONS
 
 // Gets a random number within the given range:
-int random_number_Range(int min, int max) {
+int random_number_range(int min, int max) {
     srand(time(0)); // seed with mobo time
     return ((rand() % (max - min + 1)) + min);
+}
+// returns either 0 (false) or 1 (true)
+int random_bool() {
+    srand(time(0)); // seed with mobo time
+    return rand() % 2;
 }
