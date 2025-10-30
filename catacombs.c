@@ -238,6 +238,9 @@ void create_default_map() {
     // Write default map dimensions in header
     fprintf(file, "%d %d\n", map_size_def, map_size_def);
 
+    // Seed random number generator
+    srand((unsigned int)time(NULL));
+
     // Write default map layout
     // TODO: write more specific rules before printing to file to avoid holes, excessive dead-ends and unreachable floors.
     for (int y = 0; y < map_size_def; y++) {
@@ -245,23 +248,23 @@ void create_default_map() {
             if (x == 0 || x == map_size_def-1 || y == 0 || y == map_size_def-1) { // Prints border of map with walls.
                 fprintf(file, "1 ");
             } else { // Process anything within the borders
-                if (random_bool() == 1) { // 50/50 chance to make a wall
+                // Simple random generation for now
+                int tile_choice = random_number_range(0, 100);
+                if (tile_choice < 20) { // 20% chance to make a wall
                     fprintf(file, "1 ");
+                } else if (tile_choice < 30) { // 10% chance of making a floor be a hiding spot instead.
+                    fprintf(file, "2 ");
+                } else if (tile_choice < 31 && treasures_placed < 3) { // up to 3 treasures exist in a map
+                    fprintf(file, "3 ");
+                    treasures_placed++;
                 } else {
-                    if (random_number_range(0,7)==1) { // 1 in 8 chance of making a floor be a hiding spot instead.
-                        fprintf(file, "2 ");
-                    } else if (random_number_range(0,10)==1 && treasures_placed < 3) { // up to 3 treasures exist in a map
-                        fprintf(file, "3 ");
-                        treasures_placed++;
-                    } else {
-                        fprintf(file, "0 ");
-                    }
                     fprintf(file, "0 ");
                 }
             }
         }
         fprintf(file, "\n");
     }
+
 
     fclose(file);
 }
@@ -387,10 +390,10 @@ void save_scoreboard(const char* map_name, int score) {
 }
 
 // UTILITY FUNCTIONS
-
+int seed_count = 0; // Seed count to ensure different seeds on rapid calls
 // Gets a random number within the given range:
 int random_number_range(int min, int max) {
-    srand((unsigned int)time(NULL)); // Seed the random number generator
+    //srand((unsigned int)time(NULL) + seed_count++); // Seed the random number generator
     return (rand() % (max - min + 1)) + min;
 }
 // returns either 0 (false) or 1 (true)
