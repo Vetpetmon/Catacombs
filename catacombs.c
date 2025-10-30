@@ -86,22 +86,26 @@
 
 
 #include <stdio.h>
-
-//Define constants for map dimensions
-#define MAP_WIDTH 128
-#define MAP_HEIGHT 128
+#include <stdlib.h>
+#include <string.h>
+#include <time.h>
 
 // Game state variables
 int player_x, player_y;
 int player_score; // turns survived + current turn count
 int player_heartrate = 70;
 char player_hidden = 0; // 0 = not hidden, 1 = hidden
-char* player_map[MAP_HEIGHT][MAP_WIDTH]; // player's revealed map
-char* entity_map[MAP_HEIGHT][MAP_WIDTH]; // entity positions on map
-char* map_names[100]; // array to hold custom map names
+// char* player_map[MAP_HEIGHT][MAP_WIDTH]; // player's revealed map
+// char* entity_map[MAP_HEIGHT][MAP_WIDTH]; // entity positions on map
+char* map_name[100]; // array to hold custom map names
 
-// global map variable
-int map[MAP_HEIGHT][MAP_WIDTH];
+int map_width;
+int map_height;
+
+
+int** map_dyn; // 2D array representing the catacombs map, for malloc
+int** entity_positions; // 2D array representing entity & player positions, for malloc
+int* player_map[21][21]; // 21x21 array representing player's revealed map.
 
 
 
@@ -120,11 +124,12 @@ int map[MAP_HEIGHT][MAP_WIDTH];
 
 /* Function prototypes */
 void initialize_game();
-void update_game();
+int update_game();
 void render_game();
 void cleanup_game();
 int load_map_from_file(const char* filename);
 void save_scoreboard(const char* map_name, int score);
+void create_default_map();
 
 /*
     Map file reading and detection
@@ -174,19 +179,72 @@ int load_map_from_file(const char* filename) {
     }
 
     // Read map dimensions
-    int width, height;
+    int width = 0, height = 0;
     fscanf(file, "%d %d", &width, &height);
     printf("Map dimensions: %dx%d\n", width, height);
+    map_width = width;
+    map_height = height;
+    // Set map name for scoreboard purposes
+    snprintf((char*)map_name, sizeof(map_name), "%s", filename);
+    
+    // Allocate memory for the map
+    map_dyn = malloc(height * sizeof(int*));
+    for (int i = 0; i < height; i++) {
+        map_dyn[i] = malloc(width * sizeof(int));
+    }
 
-    // Read map layout
+    // check if malloc succeeded
+    if (map_dyn == NULL) {
+        perror("Error allocating memory for map");
+        fclose(file);
+        return 1;
+    }
+
+    // Populate the map array
     for (int y = 0; y < height; y++) {
         for (int x = 0; x < width; x++) {
-            fscanf(file, "%d", &map[y][x]);
+            fscanf(file, "%d", &map_dyn[y][x]);
         }
+    }
+
+    // print the loaded map for verification
+    printf("Loaded Map:\n");
+    for (int y = 0; y < height; y++) {
+        for (int x = 0; x < width; x++) {
+            printf("%d ", map_dyn[y][x]);
+        }
+        printf("\n");
     }
 
     fclose(file);
     return 0; // success
+}
+
+// Create a default map if no custom map is provided
+void create_default_map() {
+    // Write default map to "default.catamap"
+    FILE* file = fopen("default.catamap", "w");
+    if (!file) {
+        perror("Error creating default map file");
+        return;
+    }
+
+    // Write default map dimensions
+    fprintf(file, "10 10\n");
+
+    // Write default map layout
+    for (int y = 0; y < 10; y++) {
+        for (int x = 0; x < 10; x++) {
+            if (x == 0 || x == 9 || y == 0 || y == 9) {
+                fprintf(file, "1 ");
+            } else {
+                fprintf(file, "0 ");
+            }
+        }
+        fprintf(file, "\n");
+    }
+
+    fclose(file);
 }
 
 
@@ -196,6 +254,16 @@ int main(int argc, char* argv[]) {
     if (argc > 1) {
         map_load_status = load_map_from_file(argv[1]);
     } else {
+        // Check if default map exists
+        FILE* default_file = fopen("default.catamap", "r");
+        if (default_file) {
+            fclose(default_file);
+        } else {
+            // Create default map if it doesn't exist
+            create_default_map();
+            perror("Default map file not found");
+        }
+        // Load default map
         map_load_status = load_map_from_file("default.catamap");
     }
 
@@ -206,10 +274,14 @@ int main(int argc, char* argv[]) {
     
     initialize_game();
 
-    while (1) {
-        update_game();
+    int gameState = 1; // 1 = running, 0 = game over
+
+    while (gameState) {
+        gameState = update_game();
         render_game();
     }
+
+    save_scoreboard((const char*)map_name, player_score);
 
     cleanup_game();
     return 0;
@@ -217,19 +289,20 @@ int main(int argc, char* argv[]) {
 
 void initialize_game() {
     // Initialize player position, health, score, and other game state variables
-    player_x = MAP_WIDTH / 2;
-    player_y = MAP_HEIGHT / 2;
+    player_x = 10;
+    player_y = 10;
     player_score = 0;
 
     // Additional initialization code goes here
 }
 
-void update_game() {
+int update_game() {
     // Update game state based on player input and entity behaviors
     // This function will handle movement, entity AI, collision detection, etc.
 
     // Add to player score each turn
     player_score++;
+    return 0;
 }
 
 void render_game() {
@@ -243,12 +316,33 @@ void render_game() {
 void cleanup_game() {
     // Cleanup resources and perform any necessary shutdown procedures
     printf("Cleaning up game resources...\n");
+    // Print final map for verification
+
+    printf("Final Map State:\n");
+    for (int y = 0; y < map_height; y++) {
+        for (int x = 0; x < map_width; x++) {
+            printf("%d ", map_dyn[y][x]);
+        }
+        printf("\n");
+    }
+
+    // Free dynamically allocated memory for the map
+    for (int i = 0; i < map_height; i++) { //by row
+        // Free each row
+        free(map_dyn[i]);
+        printf("Freed row %d\n", i+1); // Debugging line
+    }
+
+    free(map_dyn);
 }
 
 void save_scoreboard(const char* map_name, int score) {
     // Implementation for saving scoreboard to file goes here
     char filename[256];
-    snprintf(filename, sizeof(filename), "%s.catascore", map_name);
+    // remove the extension from map_name for the scoreboard filename array
+    const char* dot = strrchr(map_name, '.');
+    // remove the .catamap extension from map_name for the scoreboard filename array
+    snprintf(filename, sizeof(filename), "%.*s.catascore", (int)(dot - map_name), map_name);
 
     FILE* file = fopen(filename, "a");
     if (!file) {
@@ -256,6 +350,6 @@ void save_scoreboard(const char* map_name, int score) {
         return;
     }
 
-    fprintf(file, "Score: %d\n", score);
+    fprintf(file, "Score: %d \t Date: %s\n", score, __DATE__);
     fclose(file);
 }
