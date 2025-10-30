@@ -130,6 +130,8 @@ void cleanup_game();
 int load_map_from_file(const char* filename);
 void save_scoreboard(const char* map_name, int score);
 void create_default_map();
+// Utility functions
+int random_number_Range(int min, int max);
 
 /*
     Map file reading and detection
@@ -352,4 +354,12 @@ void save_scoreboard(const char* map_name, int score) {
 
     fprintf(file, "Score: %d \t Date: %s\n", score, __DATE__);
     fclose(file);
+}
+
+// UTILITY FUNCTIONS
+
+// Gets a random number within the given range:
+int random_number_Range(int min, int max) {
+    srand(time(0)); // seed with mobo time
+    return ((rand() % (max - min + 1)) + min);
 }
