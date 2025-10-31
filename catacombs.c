@@ -125,7 +125,7 @@ int* player_map[21][21]; // 21x21 array representing player's revealed map.
 */
 
 /* Function prototypes */
-void initialize_game();
+int initialize_game();
 int update_game();
 void render_game();
 void cleanup_game();
@@ -213,13 +213,13 @@ int load_map_from_file(const char* filename) {
     }
 
     // print the loaded map for verification
-    printf("Loaded Map:\n");
-    for (int y = 0; y < height; y++) {
-        for (int x = 0; x < width; x++) {
-            printf("%d ", map_dyn[y][x]);
-        }
-        printf("\n");
-    }
+    // printf("Loaded Map:\n");
+    // for (int y = 0; y < height; y++) {
+    //     for (int x = 0; x < width; x++) {
+    //         printf("%d ", map_dyn[y][x]);
+    //     }
+    //     printf("\n");
+    // }
 
     fclose(file);
     return 0; // success
@@ -294,8 +294,11 @@ int main(int argc, char* argv[]) {
         printf("Failed to load a valid map. Exiting game.\n");
         return 1;
     }
-    
-    initialize_game();
+
+    if (initialize_game() != 0) {
+        printf("Failed to initialize game. Exiting.\n");
+        return 1;
+    }
 
     int gameState = 1; // 1 = running, 0 = game over
 
@@ -314,17 +317,52 @@ int main(int argc, char* argv[]) {
 
 
 
-void initialize_game() {
+int initialize_game() {
     // Initialize player position, health, score, and other game state variables
-    player_x = 10;
-    player_y = 10;
-    player_score = 0;
+    player_score = 0; // Start on turn 0
+
+
 
     // TODO: Player placements
     // Why player-first? So that we dont place an entity within half the board distance
+    // attempt to randomly place the player on a floor tile
+    srand((unsigned int)time(NULL)); // Seed the random number generator
+    do {
+        player_x = random_number_range(1, map_width - 2); // avoid placing on border walls
+        player_y = random_number_range(1, map_height - 2);
+    } while (map_dyn[player_y][player_x] != 0); // repeat until a floor tile is found
+
 
     // TODO: Entity placements
+    // Place entities at least 1/4th the map size away from the player
+    // attempt to place them on floor tiles
+    entity_positions = malloc(3 * sizeof(int*)); // 3 entities
+    // check if malloc succeeded
+    if (entity_positions == NULL) {
+        perror("Error allocating memory for entity positions");
+        return 1; // failure
+    }
 
+    for (int i = 0; i < 3; i++) {
+        entity_positions[i] = malloc(2 * sizeof(int)); // x and y positions
+        int ex, ey;
+        do {
+            ex = random_number_range(1, map_width - 2);
+            ey = random_number_range(1, map_height - 2);
+        } while (map_dyn[ey][ex] != 0 || // must be on floor tile
+                 abs(ex - player_x) < map_width / 4 || // must be at least 1/4th map width away
+                 abs(ey - player_y) < map_height / 4); // must be at least 1/4th map height away
+        entity_positions[i][0] = ex;
+        entity_positions[i][1] = ey;
+    }
+
+    // Print initial positions for verification
+    printf("Player starting position: (%d, %d)\n", player_x, player_y);
+    for (int i = 0; i < 3; i++) {
+        printf("Entity %d starting position: (%d, %d)\n", i, entity_positions[i][0], entity_positions[i][1]);
+    }
+
+    return 0; // success
 }
 
 int update_game() {
@@ -353,20 +391,20 @@ void cleanup_game() {
     printf("Cleaning up game resources...\n");
     // Print final map for verification
 
-    printf("Final Map State:\n");
-    for (int y = 0; y < map_height; y++) {
-        for (int x = 0; x < map_width; x++) {
-            printf("%d ", map_dyn[y][x]);
-        }
-        printf("\n");
-    }
+    // printf("Final Map State:\n");
+    // for (int y = 0; y < map_height; y++) {
+    //     for (int x = 0; x < map_width; x++) {
+    //         printf("%d ", map_dyn[y][x]);
+    //     }
+    //     printf("\n");
+    // }
 
-    // Free dynamically allocated memory for the map
-    for (int i = 0; i < map_height; i++) { //by row
-        // Free each row
-        free(map_dyn[i]);
-        printf("Freed row %d\n", i+1); // Debugging line
-    }
+    // // Free dynamically allocated memory for the map
+    // for (int i = 0; i < map_height; i++) { //by row
+    //     // Free each row
+    //     free(map_dyn[i]);
+    //     printf("Freed row %d\n", i+1); // Debugging line
+    // }
 
     free(map_dyn);
 }
