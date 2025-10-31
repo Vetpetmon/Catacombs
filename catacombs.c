@@ -374,14 +374,97 @@ int update_game() {
 }
 
 
-
+// Define ASCII / UTF-8 symbols for walls, hiding spots, treasure chests, player, and entities
+#define SYMBOL_WALL '#'
+#define SYMBOL_FLOOR ' '
+#define SYMBOL_HIDING_SPOT 'H'
+#define SYMBOL_TREASURE_CHEST 'T'
+#define SYMBOL_PLAYER 'P'
+#define SYMBOL_ENTITY 'E'
 
 
 void render_game() {
     // Render the current game state to the console or graphical interface
     // This function will display the map, player, entities, and other relevant information
 
-    // Placeholder for rendering game state
+    // Print a 21 x 21 section of the map centered around the player
+    int start_x = player_x - 10;
+    int start_y = player_y - 10;
+    int end_x = player_x + 10;
+    int end_y = player_y + 10;
+    // Ensure the section does not go out of bounds
+    if (start_x < 0) {
+        start_x = 0;
+        end_x = 20;
+    }
+    if (start_y < 0) {
+        start_y = 0;
+        end_y = 20;
+    }
+    if (end_x >= map_width) {
+        end_x = map_width - 1;
+        start_x = map_width - 21;
+    }
+    if (end_y >= map_height) {
+        end_y = map_height - 1;
+        start_y = map_height - 21;
+    }
+    // store the revealed section in player_map
+    for (int y = start_y; y <= end_y; y++) {
+        for (int x = start_x; x <= end_x; x++) {
+            player_map[y - start_y][x - start_x] = &map_dyn[y][x];
+        }
+    }
+    // Floors within line of sight from 10,10 are revealed
+    // Additionally, walls that are directly adjacent to revealed floors are also revealed
+    // Floors adjancent only to direct line-of-sight tiles are revealed as well
+    // Hiding spots and treasure chests are only revealed if they are on revealed floor tiles
+    // Entities are only revealed if they are on revealed floor tiles
+    // Render the section
+
+    // RENDERING
+    printf("Catacombs Map (Player at center):\n");
+    for (int y = 0; y <= end_y - start_y; y++) {
+        for (int x = 0; x <= end_x - start_x; x++) {
+            int global_x = start_x + x;
+            int global_y = start_y + y;
+            if (global_x == player_x && global_y == player_y) {
+                printf("%c ", SYMBOL_PLAYER);
+            } else {
+                int is_entity_here = 0;
+                for (int i = 0; i < 3; i++) {
+                    if (entity_positions[i][0] == global_x && entity_positions[i][1] == global_y) {
+                        is_entity_here = 1;
+                        break;
+                    }
+                }
+                if (is_entity_here) {
+                    printf("%c ", SYMBOL_ENTITY);
+                } else {
+                    switch (*player_map[y][x]) {
+                        case 0:
+                            printf("%c ", SYMBOL_FLOOR);
+                            break;
+                        case 1:
+                            printf("%c ", SYMBOL_WALL);
+                            break;
+                        case 2:
+                            printf("%c ", SYMBOL_HIDING_SPOT);
+                            break;
+                        case 3:
+                            printf("%c ", SYMBOL_TREASURE_CHEST);
+                            break;
+                        default:
+                            printf("? ");
+                            break;
+                    }
+                }
+            }
+        }
+        printf("\n");
+    }
+    // END RENDERING
+
     printf("Player Position: (%d, %d) | Score: %d\n", player_x, player_y, player_score);
 }
 
