@@ -323,8 +323,7 @@ int initialize_game() {
 
 
 
-    // TODO: Player placements
-    // Why player-first? So that we dont place an entity within half the board distance
+    // Player placements
     // attempt to randomly place the player on a floor tile
     srand((unsigned int)time(NULL)); // Seed the random number generator
     do {
@@ -333,7 +332,7 @@ int initialize_game() {
     } while (map_dyn[player_y][player_x] != 0); // repeat until a floor tile is found
 
 
-    // TODO: Entity placements
+    // Entity placements
     // Place entities at least 1/4th the map size away from the player
     // attempt to place them on floor tiles
     entity_positions = malloc(3 * sizeof(int*)); // 3 entities
