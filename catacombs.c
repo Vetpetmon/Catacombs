@@ -110,7 +110,7 @@ int** entity_positions; // 2D array representing entity & player positions, for 
 int* player_map[21][21]; // 21x21 array representing player's revealed map.
 
 int platform_clear_command_supported = 1; // Set to 0 if the platform does not support console clear command
-
+int should_update_render = 1; // Flag to control rendering updates
 
 /*
     Map layout key:
@@ -127,7 +127,10 @@ int platform_clear_command_supported = 1; // Set to 0 if the platform does not s
 
 /* Function prototypes */
 int initialize_game();
+// game logic updates
+void update_player_bpm(int flag);
 int update_game();
+// game rendering and cleanup
 void render_game();
 void cleanup_game();
 int load_map_from_file(const char* filename);
@@ -305,9 +308,13 @@ int main(int argc, char* argv[]) {
 
     int gameState = 1; // 1 = running, 0 = game over
 
+    render_game();
+
     while (gameState) {
         gameState = update_game();
-        render_game();
+        if (should_update_render==1) {
+            render_game();
+        }
     }
 
     save_scoreboard((const char*)map_name, player_score);
@@ -315,9 +322,6 @@ int main(int argc, char* argv[]) {
     cleanup_game();
     return 0;
 }
-
-
-
 
 
 int initialize_game() {
@@ -379,6 +383,20 @@ int initialize_game() {
     return 0; // success
 }
 
+void update_player_bpm(int flag) {
+    if (flag == 1) { // moving
+        player_heartrate += 1;
+        if (player_heartrate > 100) {
+            player_heartrate = 100; // cap at 100 BPM
+        }
+    } else if (flag == 0) { // doing nothing
+        player_heartrate -= 2;
+        if (player_heartrate < 70) {
+            player_heartrate = 70; // floor at 70 BPM
+        }
+    }
+}
+
 int update_game() {
     // Update game state based on player input and entity behaviors
     // This function will handle movement, entity AI, collision detection, etc.
@@ -394,41 +412,50 @@ int update_game() {
         case 'W':
         case 'w':
             if (player_y > 0 && map_dyn[player_y - 1][player_x] != 1) {
+                update_player_bpm(1);
                 player_y--;
             }
             break;
         case 'A':
         case 'a':
             if (player_x > 0 && map_dyn[player_y][player_x - 1] != 1) {
+                update_player_bpm(1);
                 player_x--;
             }
             break;
         case 'S':
         case 's':
             if (player_y < map_height - 1 && map_dyn[player_y + 1][player_x] != 1) {
+                update_player_bpm(1);
                 player_y++;
             }
             break;
         case 'D':
         case 'd':
             if (player_x < map_width - 1 && map_dyn[player_y][player_x + 1] != 1) {
+                update_player_bpm(1);
                 player_x++;
             }
             break;
         case 'E':
         case 'e':
             // Do nothing, skip turn
+            update_player_bpm(0);
             break;
         case 'Q':
         case 'q':
             printf("Current heartrate: %d BPM\n", player_heartrate);
+            should_update_render = 0;
             // Checking heartrate does not cost a turn
             return 1; // continue game without incrementing score
         default:
             printf("Invalid input. Please use W/A/S/D to move, E to skip turn, or Q to check heartrate.\n");
+            should_update_render = 0;
             return 1; // continue game without incrementing score
     }
 
+    // If we reach here, a valid action was taken that costs a turn and requires re-rendering
+    should_update_render = 1;
     // Add to player score each turn
     player_score++;
     return 1; // continue game
@@ -541,7 +568,7 @@ void render_game() {
     }
     // END RENDERING
 
-    printf("Player Position: (%d, %d) | Score: %d\n", player_x, player_y, player_score);
+    printf("Player Position: (%d, %d) | Turn: %d\n", player_x, player_y, player_score);
 }
 
 void cleanup_game() {
