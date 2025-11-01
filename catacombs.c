@@ -725,7 +725,7 @@ void line_of_sight(int map[21][21], int visibility[21][21], int origin_x, int or
                     for (int dx = -1; dx <= 1; dx++) {
                         if (dx == 0 && dy == 0) continue;
                         int nx = x + dx, ny = y + dy;
-                        if (nx >= 0 && nx < 21 && ny >= 0 && ny < 21 && (map[ny][nx] == 0 || map[ny][nx] == 2)) {
+                        if (nx >= 0 && nx < 21 && ny >= 0 && ny < 21 && (map[ny][nx] == 0 || map[ny][nx] == 2 || map[ny][nx] == 3)) {
                             visibility[ny][nx] = 1;
                         }
                     }
