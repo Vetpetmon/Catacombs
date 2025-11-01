@@ -129,6 +129,7 @@ int should_update_render = 1; // Flag to control rendering updates
 int initialize_game();
 // game logic updates
 void update_player_bpm(int flag);
+int update_player_position(int dx, int dy);
 int update_game();
 // game rendering and cleanup
 void render_game();
@@ -397,6 +398,21 @@ void update_player_bpm(int flag) {
     }
 }
 
+// returns 1 if move was valid and executed, 0 otherwise
+int update_player_position(int dx, int dy) {
+    // check if movement would run into walls or out of bounds
+    if (player_x + dx < 0 || player_x + dx >= map_width || player_y + dy < 0 || player_y + dy >= map_height) {
+        return 0; // invalid move, do nothing
+    }
+    if (player_y + dy > 0 && map_dyn[player_y + dy][player_x + dx] != 1) {
+        update_player_bpm(1);
+        player_x += dx;
+        player_y += dy;
+        return 1;
+    }
+    return 0;
+}
+
 int update_game() {
     // Update game state based on player input and entity behaviors
     // This function will handle movement, entity AI, collision detection, etc.
@@ -412,32 +428,34 @@ int update_game() {
         input = input - ('a' - 'A');
     }
 
+    int valid_move;
+
     // Process player input
     switch (input) {
         case 'W':
-            if (player_y > 0 && map_dyn[player_y - 1][player_x] != 1) {
-                update_player_bpm(1);
-                player_y--;
+            valid_move = update_player_position(0, -1);
+            if (valid_move) {
+                break;
             }
-            break;
+            return 1;
         case 'A':
-            if (player_x > 0 && map_dyn[player_y][player_x - 1] != 1) {
-                update_player_bpm(1);
-                player_x--;
+            valid_move = update_player_position(-1, 0);
+            if (valid_move) {
+                break;
             }
-            break;
+            return 1;
         case 'S':
-            if (player_y < map_height - 1 && map_dyn[player_y + 1][player_x] != 1) {
-                update_player_bpm(1);
-                player_y++;
+            valid_move = update_player_position(0, 1);
+            if (valid_move) {
+                break;
             }
-            break;
+            return 1;
         case 'D':
-            if (player_x < map_width - 1 && map_dyn[player_y][player_x + 1] != 1) {
-                update_player_bpm(1);
-                player_x++;
+            valid_move = update_player_position(1, 0);
+            if (valid_move) {
+                break;
             }
-            break;
+            return 1;
         case 'E':
             // Do nothing, skip turn
             update_player_bpm(0);
@@ -450,7 +468,7 @@ int update_game() {
         default:
             printf("Invalid input. Please use W/A/S/D to move, E to skip turn, or Q to check heartrate.\n");
             should_update_render = 0;
-            return 1; // continue game without incrementing score
+            return 1;
     }
 
     // If we reach here, a valid action was taken that costs a turn and requires re-rendering
