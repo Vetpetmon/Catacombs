@@ -43,7 +43,7 @@
 
 
     There's three entities in mind, with their own mechanics:
-    - Vision:   The deaf entity cannot see past corners or sufficient-enough hiding spots.
+    - Vision:   The deaf entity cannot see past corners
                 HOWEVER, unlike the disturbance entity, standing completely still will not
                 work, as it can see that you're clearly there.
                 If it sees the player in direct line of sight, the player will be notified by
@@ -132,7 +132,7 @@ void cleanup_game();
 int load_map_from_file(const char* filename);
 void save_scoreboard(const char* map_name, int score);
 void create_default_map();
-void line_of_sight(int map[21][21], int visibility[21][21]);
+void line_of_sight(int map[21][21], int visibility[21][21], int origin_x, int origin_y);
 int is_line_of_sight(int map[21][21], int x1, int y1, int x2, int y2);
 // Utility functions
 int random_number_range(int min, int max);
@@ -357,6 +357,12 @@ int initialize_game() {
         entity_positions[i][1] = ey;
     }
 
+    // Verify player placement is on a floor tile
+    if (map_dyn[player_y][player_x] != 0) {
+        printf("Error: Player not placed on a floor tile!\n");
+        return 1; // failure
+    }
+
     // Print initial positions for verification
     printf("Player starting position: (%d, %d)\n", player_x, player_y);
     for (int i = 0; i < 3; i++) {
@@ -383,6 +389,7 @@ int update_game() {
 #define SYMBOL_TREASURE_CHEST 'T'
 #define SYMBOL_PLAYER 'P'
 #define SYMBOL_ENTITY 'E'
+#define SYMBOL_HIDING_PLAYER 'S'
 
 
 void render_game() {
@@ -426,10 +433,13 @@ void render_game() {
         }
     }
     int visibility[21][21] = {0};
-    line_of_sight(local_map, visibility);
+    // Calculate player's position in local coordinates
+    int player_local_x = player_x - start_x;
+    int player_local_y = player_y - start_y;
+    line_of_sight(local_map, visibility, player_local_x, player_local_y);
 
     // RENDERING
-    printf("Catacombs Map (Player at center):\n");
+    printf("Catacombs Map:\n");
     for (int y = 0; y <= end_y - start_y; y++) {
         for (int x = 0; x <= end_x - start_x; x++) {
             int global_x = start_x + x;
@@ -439,7 +449,11 @@ void render_game() {
                 continue;
             }
             if (global_x == player_x && global_y == player_y) {
-                printf("%c ", SYMBOL_PLAYER);
+                if (player_hidden) {
+                    printf("%c ", SYMBOL_HIDING_PLAYER);
+                } else {
+                    printf("%c ", SYMBOL_PLAYER);
+                }
             } else {
                 int is_entity_here = 0;
                 for (int i = 0; i < 3; i++) {
@@ -541,6 +555,24 @@ int is_line_of_sight(int map[21][21], int x1, int y1, int x2, int y2) {
     int x = x1, y = y1;
     while (1) {
         if (x != x1 || y != y1) {
+            // Check for diagonal blocking: if moving diagonally and both adjacent orthogonal cells are walls, block LOS
+            // Checks for both tiles labeled as walls (1) and hiding spots (2) as blocking LOS
+            if (sx != 0 && sy != 0) {
+                int adj_x = x + sx;
+                int adj_y = y + sy;
+                // Ensure adjacents are within bounds
+                if (adj_x >= 0 && adj_x < 21 && adj_y >= 0 && adj_y < 21) {
+                    if (map[adj_y][x] == 1 && map[y][adj_x] == 1) return 0;
+                    if (map[adj_y][x] == 2 && map[y][adj_x] == 2) return 0;
+                }
+                // Also check the previous step's adjacent cells
+                int prev_x = x - sx;
+                int prev_y = y - sy;
+                if (prev_x >= 0 && prev_x < 21 && prev_y >= 0 && prev_y < 21) {
+                    if (map[prev_y][x] == 1 && map[y][prev_x] == 1) return 0;
+                    if (map[prev_y][x] == 2 && map[y][prev_x] == 2) return 0;
+                }
+            }
             if (map[y][x] == 1) return 0;
         }
         if (x == x2 && y == y2) break;
@@ -557,9 +589,9 @@ int is_line_of_sight(int map[21][21], int x1, int y1, int x2, int y2) {
     return 1;
 }
 
-void line_of_sight(int map[21][21], int visibility[21][21]) {
+void line_of_sight(int map[21][21], int visibility[21][21], int origin_x, int origin_y) {
     memset(visibility, 0, sizeof(int) * 21 * 21);
-    int cx = 10, cy = 10;
+    int cx = origin_x, cy = origin_y;
     int direct_los[21][21] = {0};
     for (int y = 0; y < 21; y++) {
         for (int x = 0; x < 21; x++) {
@@ -597,12 +629,14 @@ void line_of_sight(int map[21][21], int visibility[21][21]) {
                     for (int dx = -1; dx <= 1; dx++) {
                         if (dx == 0 && dy == 0) continue;
                         int nx = x + dx, ny = y + dy;
-                        if (nx >= 0 && nx < 21 && ny >= 0 && ny < 21 && map[ny][nx] == 0) {
-                            visibility[ny][x] = 1;  // Note: This should be visibility[ny][nx] = 1;
+                        if (nx >= 0 && nx < 21 && ny >= 0 && ny < 21 && (map[ny][nx] == 0 || map[ny][nx] == 2)) {
+                            visibility[ny][nx] = 1;
                         }
                     }
                 }
             }
         }
     }
+    // Ensure the origin (player's position) is always visible
+    visibility[cy][cx] = 1;
 }
