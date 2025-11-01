@@ -1,5 +1,6 @@
-# Ignore all files in the .vscode directory
+# Ignore all files in the technical directories
 .vscode/
+output/
 
 # Ignore executable files
 *.exe
