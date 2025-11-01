@@ -407,43 +407,42 @@ int update_game() {
     int c;
     while ((c = getchar()) != '\n' && c != EOF) {}
 
+    // Convert char to uppercase for easier handling
+    if (input >= 'a' && input <= 'z') {
+        input = input - ('a' - 'A');
+    }
+
     // Process player input
     switch (input) {
         case 'W':
-        case 'w':
             if (player_y > 0 && map_dyn[player_y - 1][player_x] != 1) {
                 update_player_bpm(1);
                 player_y--;
             }
             break;
         case 'A':
-        case 'a':
             if (player_x > 0 && map_dyn[player_y][player_x - 1] != 1) {
                 update_player_bpm(1);
                 player_x--;
             }
             break;
         case 'S':
-        case 's':
             if (player_y < map_height - 1 && map_dyn[player_y + 1][player_x] != 1) {
                 update_player_bpm(1);
                 player_y++;
             }
             break;
         case 'D':
-        case 'd':
             if (player_x < map_width - 1 && map_dyn[player_y][player_x + 1] != 1) {
                 update_player_bpm(1);
                 player_x++;
             }
             break;
         case 'E':
-        case 'e':
             // Do nothing, skip turn
             update_player_bpm(0);
             break;
         case 'Q':
-        case 'q':
             printf("Current heartrate: %d BPM\n", player_heartrate);
             should_update_render = 0;
             // Checking heartrate does not cost a turn
