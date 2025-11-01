@@ -109,6 +109,7 @@ int** map_dyn; // 2D array representing the catacombs map, for malloc
 int** entity_positions; // 2D array representing entity & player positions, for malloc
 int* player_map[21][21]; // 21x21 array representing player's revealed map.
 
+int platform_clear_command_supported = 1; // Set to 0 if the platform does not support console clear command
 
 
 /*
@@ -323,6 +324,12 @@ int initialize_game() {
     // Initialize player position, health, score, and other game state variables
     player_score = 0; // Start on turn 0
 
+    // Get current operating system for console clear command
+    #ifdef _WIN32
+        platform_clear_command_supported = 1; // Windows supports "cls"
+    #else
+        platform_clear_command_supported = 0; // Other platforms may not support clear command
+    #endif
 
 
     // Player placements
@@ -375,10 +382,56 @@ int initialize_game() {
 int update_game() {
     // Update game state based on player input and entity behaviors
     // This function will handle movement, entity AI, collision detection, etc.
+    char input;
+    printf("Enter your move (W/A/S/D to move, E to skip turn, Q to check heartrate): ");
+    scanf(" %c", &input);
+    // stdin flush
+    int c;
+    while ((c = getchar()) != '\n' && c != EOF) {}
+
+    // Process player input
+    switch (input) {
+        case 'W':
+        case 'w':
+            if (player_y > 0 && map_dyn[player_y - 1][player_x] != 1) {
+                player_y--;
+            }
+            break;
+        case 'A':
+        case 'a':
+            if (player_x > 0 && map_dyn[player_y][player_x - 1] != 1) {
+                player_x--;
+            }
+            break;
+        case 'S':
+        case 's':
+            if (player_y < map_height - 1 && map_dyn[player_y + 1][player_x] != 1) {
+                player_y++;
+            }
+            break;
+        case 'D':
+        case 'd':
+            if (player_x < map_width - 1 && map_dyn[player_y][player_x + 1] != 1) {
+                player_x++;
+            }
+            break;
+        case 'E':
+        case 'e':
+            // Do nothing, skip turn
+            break;
+        case 'Q':
+        case 'q':
+            printf("Current heartrate: %d BPM\n", player_heartrate);
+            // Checking heartrate does not cost a turn
+            return 1; // continue game without incrementing score
+        default:
+            printf("Invalid input. Please use W/A/S/D to move, E to skip turn, or Q to check heartrate.\n");
+            return 1; // continue game without incrementing score
+    }
 
     // Add to player score each turn
     player_score++;
-    return 0;
+    return 1; // continue game
 }
 
 
@@ -393,6 +446,14 @@ int update_game() {
 
 
 void render_game() {
+    // Clear the console (platform-dependent)
+    // For Windows
+    if (platform_clear_command_supported) {
+        system("cls");
+    } else {
+        system("clear");
+    }
+
     // Render the current game state to the console or graphical interface
     // This function will display the map, player, entities, and other relevant information
 
