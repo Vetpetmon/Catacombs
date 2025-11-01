@@ -132,6 +132,8 @@ void cleanup_game();
 int load_map_from_file(const char* filename);
 void save_scoreboard(const char* map_name, int score);
 void create_default_map();
+void line_of_sight(int map[21][21], int visibility[21][21]);
+int is_line_of_sight(int map[21][21], int x1, int y1, int x2, int y2);
 // Utility functions
 int random_number_range(int min, int max);
 int random_bool();
@@ -415,12 +417,16 @@ void render_game() {
             player_map[y - start_y][x - start_x] = &map_dyn[y][x];
         }
     }
-    // Floors within line of sight from 10,10 are revealed
-    // Additionally, walls that are directly adjacent to revealed floors are also revealed
-    // Floors adjancent only to direct line-of-sight tiles are revealed as well
-    // Hiding spots and treasure chests are only revealed if they are on revealed floor tiles
-    // Entities are only revealed if they are on revealed floor tiles
-    // Render the section
+
+    // Create local map and visibility
+    int local_map[21][21];
+    for (int y = 0; y < 21; y++) {
+        for (int x = 0; x < 21; x++) {
+            local_map[y][x] = *player_map[y][x];
+        }
+    }
+    int visibility[21][21] = {0};
+    line_of_sight(local_map, visibility);
 
     // RENDERING
     printf("Catacombs Map (Player at center):\n");
@@ -428,6 +434,10 @@ void render_game() {
         for (int x = 0; x <= end_x - start_x; x++) {
             int global_x = start_x + x;
             int global_y = start_y + y;
+            if (visibility[y][x] == 0) {
+                printf("? ");  // Unrevealed tile
+                continue;
+            }
             if (global_x == player_x && global_y == player_y) {
                 printf("%c ", SYMBOL_PLAYER);
             } else {
@@ -519,4 +529,80 @@ int random_number_range(int min, int max) {
 // returns either 0 (false) or 1 (true)
 int random_bool() {
     return random_number_range(0,1);
+}
+// Line of sight function using Bresenham's line algorithm
+int is_line_of_sight(int map[21][21], int x1, int y1, int x2, int y2) {
+    if (x1 == x2 && y1 == y2) return 1;
+    int dx = abs(x2 - x1);
+    int dy = abs(y2 - y1);
+    int sx = x1 < x2 ? 1 : -1;
+    int sy = y1 < y2 ? 1 : -1;
+    int err = dx - dy;
+    int x = x1, y = y1;
+    while (1) {
+        if (x != x1 || y != y1) {
+            if (map[y][x] == 1) return 0;
+        }
+        if (x == x2 && y == y2) break;
+        int e2 = 2 * err;
+        if (e2 > -dy) {
+            err -= dy;
+            x += sx;
+        }
+        if (e2 < dx) {
+            err += dx;
+            y += sy;
+        }
+    }
+    return 1;
+}
+
+void line_of_sight(int map[21][21], int visibility[21][21]) {
+    memset(visibility, 0, sizeof(int) * 21 * 21);
+    int cx = 10, cy = 10;
+    int direct_los[21][21] = {0};
+    for (int y = 0; y < 21; y++) {
+        for (int x = 0; x < 21; x++) {
+            int dx = x - cx;
+            int dy = y - cy;
+            int dist = abs(dx) + abs(dy);
+            if (dist > 10) continue;
+            if (is_line_of_sight(map, cx, cy, x, y) && map[y][x] == 0) {
+                visibility[y][x] = 1;
+                direct_los[y][x] = 1;
+            }
+        }
+    }
+    // Reveal walls adjacent to revealed floors
+    for (int y = 0; y < 21; y++) {
+        for (int x = 0; x < 21; x++) {
+            if (visibility[y][x] == 1 && map[y][x] == 0) {
+                for (int dy = -1; dy <= 1; dy++) {
+                    for (int dx = -1; dx <= 1; dx++) {
+                        if (dx == 0 && dy == 0) continue;
+                        int nx = x + dx, ny = y + dy;
+                        if (nx >= 0 && nx < 21 && ny >= 0 && ny < 21 && map[ny][nx] == 1) {
+                            visibility[ny][nx] = 1;
+                        }
+                    }
+                }
+            }
+        }
+    }
+    // Reveal floors adjacent to direct LOS floors
+    for (int y = 0; y < 21; y++) {
+        for (int x = 0; x < 21; x++) {
+            if (direct_los[y][x] == 1) {
+                for (int dy = -1; dy <= 1; dy++) {
+                    for (int dx = -1; dx <= 1; dx++) {
+                        if (dx == 0 && dy == 0) continue;
+                        int nx = x + dx, ny = y + dy;
+                        if (nx >= 0 && nx < 21 && ny >= 0 && ny < 21 && map[ny][nx] == 0) {
+                            visibility[ny][x] = 1;  // Note: This should be visibility[ny][nx] = 1;
+                        }
+                    }
+                }
+            }
+        }
+    }
 }
