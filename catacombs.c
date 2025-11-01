@@ -448,20 +448,13 @@ int update_game() {
 void render_game() {
     // Clear the console (platform-dependent)
     // For Windows
-    if (platform_clear_command_supported) {
-        system("cls");
-    } else {
-        system("clear");
-    }
-
+    (platform_clear_command_supported) ? system("cls") : system("clear");
+    
     // Render the current game state to the console or graphical interface
     // This function will display the map, player, entities, and other relevant information
 
     // Print a 21 x 21 section of the map centered around the player
-    int start_x = player_x - 10;
-    int start_y = player_y - 10;
-    int end_x = player_x + 10;
-    int end_y = player_y + 10;
+    int start_x = player_x - 10, start_y = player_y - 10, end_x = player_x + 10, end_y = player_y + 10;
     // Ensure the section does not go out of bounds
     if (start_x < 0) {
         start_x = 0;
@@ -510,11 +503,9 @@ void render_game() {
                 continue;
             }
             if (global_x == player_x && global_y == player_y) {
-                if (player_hidden) {
-                    printf("%c ", SYMBOL_HIDING_PLAYER);
-                } else {
-                    printf("%c ", SYMBOL_PLAYER);
-                }
+                // Update player hidden status based on current tile
+                player_hidden = (*player_map[y][x] == 2) ? 1 : 0;
+                (player_hidden) ? printf("%c ", SYMBOL_HIDING_PLAYER) : printf("%c ", SYMBOL_PLAYER);
             } else {
                 int is_entity_here = 0;
                 for (int i = 0; i < 3; i++) {
