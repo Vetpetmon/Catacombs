@@ -1,8 +1,6 @@
 /*
     Catacombs Map Generator
     Generates a random catacomb map and saves it to a file.
-
-    
 */
 
 #include <stdio.h>
@@ -17,11 +15,10 @@ int random_bool();
 
 int** map; // dynamic 2D array for the catacomb map
 
-// Add new function to connect disconnected components using BFS
+// Connect disconnected components using BFS
 void connect_components(int width, int height) {
     int visited[height][width];
     memset(visited, 0, sizeof(visited));
-    
     for (int y = 1; y < height - 1; y++) {
         for (int x = 1; x < width - 1; x++) {
             if (map[y][x] == '0' && !visited[y][x]) {
@@ -32,12 +29,10 @@ void connect_components(int width, int height) {
                 queue[rear][1] = x;
                 rear++;
                 visited[y][x] = 1;
-                
                 while (front < rear) {
                     int cy = queue[front][0];
                     int cx = queue[front][1];
                     front++;
-                    
                     // Check orthogonal neighbors
                     int dirs[4][2] = {{-1, 0}, {1, 0}, {0, -1}, {0, 1}};
                     for (int d = 0; d < 4; d++) {
@@ -51,12 +46,11 @@ void connect_components(int width, int height) {
                         }
                     }
                 }
-                
                 // If this is not the first component, connect it to the previous one
                 // For simplicity, connect to the leftmost floor tile in the first component
                 if (rear > 1) { // More than one tile, but to connect components, we need to find unvisited floors
-                    // Actually, this BFS marks one component; we need to find another unvisited floor and carve a path
-                    // Revised: After marking one component, find the next unvisited floor and carve a path
+                    // BFS marks one component; we need to find another unvisited floor and carve a path
+                    // After marking one component, find the next unvisited floor and carve a path
                     for (int yy = 1; yy < height - 1; yy++) {
                         for (int xx = 1; xx < width - 1; xx++) {
                             if (map[yy][xx] == '0' && !visited[yy][xx]) {
@@ -88,8 +82,6 @@ int generate_catacomb_map(int width, int height) {
     for (int i = 0; i < height; i++) {
         map[i] = (int *)malloc(width * sizeof(int));
     }
-
-    // check if memory allocation was successful
     if (map == NULL) {
         fprintf(stderr, "Memory allocation failed\n");
         return 1; // error
@@ -101,7 +93,6 @@ int generate_catacomb_map(int width, int height) {
             map[y][x] = '1'; // wall
         }
     }
-
     // Carve out random rooms and corridors
     int min_rooms = (width * height) / (width + height); // minimum of half the map width/height in rooms
     int num_rooms = random_number_range(min_rooms, min_rooms + 5);
@@ -111,7 +102,6 @@ int generate_catacomb_map(int width, int height) {
         int room_height = random_number_range(3, 9);
         int room_x = random_number_range(1, width - room_width - 1);
         int room_y = random_number_range(1, height - room_height - 1);
-
         // before placing the room, check if it overlaps with existing rooms
         int overlap = 0;
         for (int y = room_y - 1; y < room_y + room_height + 1; y++) {
@@ -123,7 +113,6 @@ int generate_catacomb_map(int width, int height) {
             }
             if (overlap) break;
         }
-
         if (overlap) continue;
 
         // Carve out the room
@@ -133,10 +122,6 @@ int generate_catacomb_map(int width, int height) {
             }
         }
     }
-
-    // Place rectangular or square walls in huge rooms (>14x14)
-    // TODO: Implement wall placement for huge rooms
-
     // Connect rooms with corridors
     // record corridor start and end points
     for (int r = 0; r < num_rooms - 1; r++) {
@@ -178,7 +163,6 @@ int generate_catacomb_map(int width, int height) {
             }
         }
     }
-
     // scan the map to find rooms not connected to corridors and connect them
     // do not overwrite if the position is already a floor, hiding spot, or treasure
     for (int y = 1; y < height - 1; y++) {
@@ -206,22 +190,18 @@ int generate_catacomb_map(int width, int height) {
             }
         }
     }
-
-    // Boarder the map with walls
-    for (int x = 0; x < width; x++) {
-        map[0][x] = '1'; // top border
-        map[height - 1][x] = '1'; // bottom border
-    }
-    for (int y = 0; y < height; y++) {
-        map[y][0] = '1'; // left border
-        map[y][width - 1] = '1'; // right border
+    // Border the map with walls
+     for (int y = 0; y < height; y++) {
+        for (int x = 0; x < width; x++) {
+            if (x == 0 || x == width-1 || y == 0 || y == height-1) {
+                map[y][x] = '1'; // wall
+            }
+        }
     }
 
     // Place some random hiding spots in wall tiles of corridors with exactly one adjacent floor tile and 20% chance
     int num_hiding_spots = (width * height) / 2; // arbitrary
     for (int h = 0; h < num_hiding_spots; h++) {
-        // iterate through every position on the map, do not pick randomly to ensure coverage
-        // repeat until a valid hiding spot is found
         int hx, hy;
         do {
             hx = random_number_range(1, width - 2);
@@ -246,8 +226,6 @@ int generate_catacomb_map(int width, int height) {
             }
         }
     }
-    
-    
     // Place small wall squares in large rooms (12x12 entirely floors)
     for (int y = 0; y <= height - 12; y++) {
         for (int x = 0; x <= width - 12; x++) {
@@ -274,10 +252,8 @@ int generate_catacomb_map(int width, int height) {
             }
         }
     }
-    
     // After placing rooms and initial corridors, call the new connection function
     connect_components(width, height);
-
     // Place some random treasures in rooms, avoid placing in corridors by checking for at least 5 surrounding floors in 3x3
     int num_treasures = 3; // fixed number
     for (int t = 0; t < num_treasures; t++) {
@@ -328,14 +304,6 @@ int main() {
         return 1; // error
     }
 
-    // print the generated map
-    for (int y = 0; y < height; y++) {
-        for (int x = 0; x < width; x++) {
-            printf("%c ", map[y][x]);
-        }
-        printf("\n");
-    }
-
     // save the map to a file
     save_map_to_file(filename, width, height);
 
@@ -360,7 +328,6 @@ void save_map_to_file(const char *filename, int width, int height) {
         fprintf(stderr, "Failed to open file for writing\n");
         return;
     }
-
     // write dimensions as header
     fprintf(file, "%d %d\n", width, height);
     // print to file
@@ -370,7 +337,6 @@ void save_map_to_file(const char *filename, int width, int height) {
         }
         fprintf(file, "\n");
     }
-
     // print out ratio of walls to floors
     int wall_count = 0;
     int floor_count = 0;
@@ -391,7 +357,7 @@ void save_map_to_file(const char *filename, int width, int height) {
         }
     }
     printf("Hiding spots: %d\n", hiding_spot_count);
-    printf("Treasures: %d\n", treasure_count);
+    printf("Treasures: %d of 3\n", treasure_count);
 
     fclose(file);
 }
