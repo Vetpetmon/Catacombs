@@ -136,7 +136,6 @@ void render_game();
 void cleanup_game();
 int load_map_from_file(const char* filename);
 void save_scoreboard(const char* map_name, int score);
-void create_default_map();
 void line_of_sight(int map[21][21], int visibility[21][21], int origin_x, int origin_y);
 int is_line_of_sight(int map[21][21], int x1, int y1, int x2, int y2);
 // Utility functions
@@ -232,49 +231,6 @@ int load_map_from_file(const char* filename) {
     return 0; // success
 }
 
-// Create a default map if no custom map is provided
-void create_default_map() {
-    // Write default map to "default.catamap"
-    FILE* file = fopen("default.catamap", "w");
-    if (!file) {
-        perror("Error creating default map file");
-        return;
-    }
-    int map_size_def = 50, treasures_placed = 0;
-
-    // Write default map dimensions in header
-    fprintf(file, "%d %d\n", map_size_def, map_size_def);
-
-    // Seed random number generator
-    srand((unsigned int)time(NULL));
-
-    // Write default map layout
-    // TODO: write more specific rules before printing to file to avoid holes, excessive dead-ends and unreachable floors.
-    for (int y = 0; y < map_size_def; y++) {
-        for (int x = 0; x < map_size_def; x++) {
-            if (x == 0 || x == map_size_def-1 || y == 0 || y == map_size_def-1) { // Prints border of map with walls.
-                fprintf(file, "1 ");
-            } else { // Process anything within the borders
-                // Simple random generation for now
-                int tile_choice = random_number_range(0, 100);
-                if (tile_choice < 20) { // 20% chance to make a wall
-                    fprintf(file, "1 ");
-                } else if (tile_choice < 30) { // 10% chance of making a floor be a hiding spot instead.
-                    fprintf(file, "2 ");
-                } else if (tile_choice < 31 && treasures_placed < 3) { // up to 3 treasures exist in a map
-                    fprintf(file, "3 ");
-                    treasures_placed++;
-                } else {
-                    fprintf(file, "0 ");
-                }
-            }
-        }
-        fprintf(file, "\n");
-    }
-
-
-    fclose(file);
-}
 
 
 
@@ -290,8 +246,8 @@ int main(int argc, char* argv[]) {
             fclose(default_file);
         } else {
             // Create default map if it doesn't exist
-            create_default_map();
             perror("Default map file not found");
+            printf("Please create a default map by compiling and running the map generator: catacomb_generator.c\n");
         }
         // Load default map
         map_load_status = load_map_from_file("default.catamap");
@@ -601,12 +557,17 @@ void cleanup_game() {
     //     printf("\n");
     // }
 
-    // // Free dynamically allocated memory for the map
-    // for (int i = 0; i < map_height; i++) { //by row
-    //     // Free each row
-    //     free(map_dyn[i]);
-    //     printf("Freed row %d\n", i+1); // Debugging line
-    // }
+    // Free dynamically allocated memory for the map
+    for (int i = 0; i < map_height; i++) { //by row
+        // Free each row
+        free(map_dyn[i]);
+        // printf("Freed row %d\n", i+1); // Debugging line
+    }
+
+    // Free entity positions
+    for (int i = 0; i < 3; i++) {
+        free(entity_positions[i]);
+    }
 
     free(map_dyn);
 }
