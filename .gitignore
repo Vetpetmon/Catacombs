@@ -1,7 +1,11 @@
 # Ignore all files in the technical directories
 .vscode/
 output/
+# Ignore build artifacts
+build/
 
 # Ignore executable files
 *.exe
 *.EXE
+*.catamap
+*.catascore
